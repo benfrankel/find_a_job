@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::read_to_string};
+use std::collections::HashMap;
 
 use tiny_bail::prelude::*;
 use url::Url;
@@ -83,7 +83,7 @@ impl Bot {
     }
 
     fn load_jobs(&mut self) {
-        let jobs_str = r!(read_to_string(Self::JOBS_FILE_PATH));
+        let jobs_str = r!(std::fs::read_to_string(Self::JOBS_FILE_PATH));
         self.jobs = r!(ron::from_str(&jobs_str));
     }
 
@@ -97,7 +97,7 @@ impl Bot {
     }
 
     fn load_job_boards(&mut self) {
-        let job_boards_str = r!(read_to_string(Self::JOB_BOARDS_FILE_PATH));
+        let job_boards_str = r!(std::fs::read_to_string(Self::JOB_BOARDS_FILE_PATH));
         self.job_boards = r!(ron::from_str(&job_boards_str));
     }
 }
