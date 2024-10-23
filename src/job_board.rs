@@ -67,7 +67,8 @@ impl JobBoard {
         // Parse jobs from the HTML.
         for job_html in self.next_job_re.split(&page_html).skip(1) {
             let captures = c!(self.job_title_re.captures(job_html));
-            let raw_title = c!(captures.get(1)).as_str();
+            let raw_title = c!(captures.get(1)).as_str().trim();
+            let raw_title = decode_html_entities(raw_title);
 
             let captures = c!(self.job_url_re.captures(job_html));
             let raw_url = c!(captures.get(1)).as_str();

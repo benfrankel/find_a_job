@@ -158,7 +158,7 @@ fn parse_level(norm: &str) -> JobLevel {
 fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(
         AUTOMATION_RE,
-        r"\b(automation|build|tools|security|devops?|test(ing)?|site reliability|sre|platforms? engineer(ing)?)\b",
+        r"\b(automation|build|security|devops?|test(ing)?|site reliability|sre|platforms? engineer(ing)?)\b",
     );
     re!(WEB_RE, r"\b(web|front ?end)\b");
     re!(
@@ -206,14 +206,15 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
         MANAGER_RE,
         r"\b(manager|director|president|coordinator|producer)\b",
     );
-    re!(
-        OTHER_RE,
-        r"\b(specialist|researcher|scientist|analyst|assistant|responder|publishing|marketing|bi engineer|analytics tester)\b",
-    );
     re!(TESTER_RE, r"\b(tester|qa|quality engineer(ing)?)\b");
+    re!(KNOWN_OTHER_RE, r"\b(bi engineer|support engineer)\b");
     re!(
         PROGRAMMER_RE,
         r"\b(programmer|coder|developer|engineer(ing)?|technical artist|swe|sre)\b",
+    );
+    re!(
+        OTHER_RE,
+        r"\b(specialist|researcher|scientist|analyst|assistant|responder|publishing|marketing|support)\b",
     );
     re!(ARTIST_RE, r"\b(artist|animator|modeler)\b");
     re!(WRITER_RE, r"\b(writer)\b");
@@ -223,12 +224,14 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
 
     if MANAGER_RE.is_match(norm) {
         JobDiscipline::Manager
-    } else if OTHER_RE.is_match(norm) {
-        JobDiscipline::Other
     } else if TESTER_RE.is_match(norm) {
         JobDiscipline::Tester
+    } else if KNOWN_OTHER_RE.is_match(norm) {
+        JobDiscipline::Other
     } else if PROGRAMMER_RE.is_match(norm) {
         JobDiscipline::Programmer
+    } else if OTHER_RE.is_match(norm) {
+        JobDiscipline::Other
     } else if ARTIST_RE.is_match(norm) {
         JobDiscipline::Artist
     } else if WRITER_RE.is_match(norm) {
@@ -240,7 +243,7 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     } else if SNEAKY_MANAGER_RE.is_match(norm) {
         JobDiscipline::Manager
     } else {
-        JobDiscipline::Programmer
+        JobDiscipline::Other
     }
 }
 
@@ -672,7 +675,7 @@ mod tests {
             "Data Analytics Tester (3mos) Contract",
             JobLevel::Mid,
             None,
-            JobDiscipline::Other,
+            JobDiscipline::Tester,
         ),
         (
             "Test Manager",
