@@ -34,10 +34,12 @@ impl JobBoard {
 
         let mut url = self.url.clone();
         loop {
+            // Make an HTTP request to the current URL.
             let page_response = r!(reqwest::blocking::get(url));
             let page_html = r!(page_response.text());
-            let (new_jobs, new_url) = self.parse_page(&page_html);
 
+            // Extract a list of jobs and a URL to the next page from the HTML.
+            let (new_jobs, new_url) = self.parse_page(&page_html);
             jobs.extend(new_jobs);
             url = bq!(new_url);
 
@@ -50,6 +52,7 @@ impl JobBoard {
     fn parse_page(&self, page_html: &str) -> (HashMap<Url, Job>, Option<Url>) {
         let mut jobs = HashMap::new();
 
+        // Parse jobs from the HTML.
         for job_html in self.next_job_re.split(&page_html).skip(1) {
             let captures = c!(self.job_title_re.captures(job_html));
             let raw_title = c!(captures.get(1)).as_str();
@@ -62,6 +65,7 @@ impl JobBoard {
             jobs.insert(url, Job::new(raw_title).with_source(&self.name));
         }
 
+        // Find a URL to the next page if there is one.
         let next_page_url = self.next_page_re.as_ref().and_then(|x| {
             let captures = rq!(x.captures(page_html));
             let raw_url = r!(captures.get(1)).as_str();
