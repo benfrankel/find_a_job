@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use reqwest::blocking::Client;
 use tiny_bail::prelude::*;
 use url::Url;
 
@@ -7,6 +8,7 @@ use crate::{job::Job, job_board::JobBoard};
 
 #[derive(Default)]
 pub struct Bot {
+    pub client: Client,
     pub job_boards: Vec<JobBoard>,
     pub jobs: HashMap<Url, Job>,
 }
@@ -15,23 +17,39 @@ impl Bot {
     const JOBS_FILE_PATH: &str = "data/jobs.ron";
     const JOBS_BACKUP_FILE_PATH: &str = "data/jobs.ron.backup";
     const JOB_BOARDS_FILE_PATH: &str = "data/job_boards.ron";
+    const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.3";
 
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            client: Client::builder()
+                .user_agent(Self::USER_AGENT)
+                .build()
+                .unwrap(),
+            job_boards: Vec::new(),
+            jobs: HashMap::new(),
+        }
     }
 
     pub fn init(&mut self) {
         init_logger();
+        self.load();
+    }
+
+    pub fn load(&mut self) {
         self.load_jobs();
         self.load_job_boards();
     }
 
-    pub fn scrape_job_boards(&mut self) {
+    pub fn save(&mut self) {
+        self.save_jobs();
+    }
+
+    pub fn scrape(&mut self) {
         let mut new_jobs = HashMap::new();
 
         for job_board in &self.job_boards {
             // Scrape job board.
-            let mut jobs = job_board.scrape();
+            let mut jobs = job_board.scrape(&self.client);
             log::info!("[{}] Scraped {} jobs", job_board, jobs.len());
 
             // Log added jobs and update existing jobs.
@@ -82,7 +100,7 @@ impl Bot {
         }
     }
 
-    fn load_jobs(&mut self) {
+    pub fn load_jobs(&mut self) {
         let jobs_str = r!(std::fs::read_to_string(Self::JOBS_FILE_PATH));
         self.jobs = r!(ron::from_str(&jobs_str));
     }
@@ -96,7 +114,7 @@ impl Bot {
         r!(std::fs::write(Self::JOBS_FILE_PATH, jobs_str));
     }
 
-    fn load_job_boards(&mut self) {
+    pub fn load_job_boards(&mut self) {
         let job_boards_str = r!(std::fs::read_to_string(Self::JOB_BOARDS_FILE_PATH));
         self.job_boards = r!(ron::from_str(&job_boards_str));
     }

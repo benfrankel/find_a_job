@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use html_escape::decode_html_entities;
 use regex::Regex;
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use tiny_bail::prelude::*;
 use url::Url;
@@ -29,17 +30,28 @@ impl Display for JobBoard {
 }
 
 impl JobBoard {
-    pub fn scrape(&self) -> HashMap<Url, Job> {
+    pub fn scrape(&self, client: &Client) -> HashMap<Url, Job> {
         let mut jobs = HashMap::new();
 
         let mut url = self.url.clone();
         loop {
             // Make an HTTP request to the current URL.
-            let page_response = r!(reqwest::blocking::get(url));
-            let page_html = r!(page_response.text());
+            log::debug!("[{}] Scraping: {}", self.name, url);
+            let page_response = r!(jobs, client.get(url).send());
+            if !page_response.status().is_success() {
+                log::warn!(
+                    "[{}] HTTP {}: {:?}",
+                    self.name,
+                    page_response.status(),
+                    page_response.text(),
+                );
+                return jobs;
+            }
+            let page_html = r!(jobs, page_response.text());
 
             // Extract a list of jobs and a URL to the next page from the HTML.
             let (new_jobs, new_url) = self.parse_page(&page_html);
+            log::debug!("[{}] Found {} jobs", self.name, new_jobs.len());
             jobs.extend(new_jobs);
             url = bq!(new_url);
 
