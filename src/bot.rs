@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
-use reqwest::blocking::Client;
+use reqwest::{blocking::Client, header};
 use tiny_bail::prelude::*;
 use url::Url;
 
@@ -17,12 +17,47 @@ impl Bot {
     const JOBS_FILE_PATH: &str = "data/jobs.ron";
     const JOBS_BACKUP_FILE_PATH: &str = "data/jobs.ron.backup";
     const JOB_BOARDS_FILE_PATH: &str = "data/job_boards.ron";
-    const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.3";
 
     pub fn new() -> Self {
+        let headers = header::HeaderMap::from_iter([
+            (
+                header::ACCEPT,
+                header::HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9"),
+            ),
+            (
+                header::ACCEPT_ENCODING,
+                header::HeaderValue::from_static("gzip, deflate, br"),
+            ),
+            (
+                header::ACCEPT_LANGUAGE,
+                header::HeaderValue::from_static("en-US,en;q=0.5"),
+            ),
+            (
+                header::CONNECTION,
+                header::HeaderValue::from_static("keep-alive"),
+            ),
+            (
+                header::DNT,
+                header::HeaderValue::from_static("1"),
+            ),
+            (
+                header::REFERER,
+                header::HeaderValue::from_static("http://www.google.com/"),
+            ),
+            (
+                header::UPGRADE_INSECURE_REQUESTS,
+                header::HeaderValue::from_static("1"),
+            ),
+            (
+                header::USER_AGENT,
+                header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.3"),
+            )
+        ]);
+
         Self {
             client: Client::builder()
-                .user_agent(Self::USER_AGENT)
+                .default_headers(headers)
+                .timeout(Duration::from_secs(8))
                 .build()
                 .unwrap(),
             job_boards: Vec::new(),
