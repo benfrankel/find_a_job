@@ -1,7 +1,9 @@
-use find_a_job::Bot;
+use find_a_job::{init_logger, Bot};
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    init_logger(log::LevelFilter::Info);
     let mut bot = Bot::new();
-    bot.init();
-    bot.log_jobs();
+    bot.load_jobs();
+    bot.list_jobs();
 }

@@ -2,24 +2,29 @@ use std::{collections::HashMap, fmt::Display};
 
 use html_escape::decode_html_entities;
 use regex::Regex;
-use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use thirtyfour::{error::WebDriverResult, WebDriver};
 use tiny_bail::prelude::*;
 use url::Url;
 
 use crate::job::Job;
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct JobBoard {
     pub name: String,
     url: Url,
+    #[serde(with = "serde_regex", default)]
+    start_re: Option<Regex>,
+    #[serde(with = "serde_regex", default)]
+    end_re: Option<Regex>,
     #[serde(with = "serde_regex")]
     next_job_re: Regex,
     #[serde(with = "serde_regex")]
     job_title_re: Regex,
     #[serde(with = "serde_regex")]
     job_url_re: Regex,
-    #[serde(with = "serde_regex")]
+    #[serde(with = "serde_regex", default)]
     next_page_re: Option<Regex>,
 }
 
@@ -30,42 +35,45 @@ impl Display for JobBoard {
 }
 
 impl JobBoard {
-    pub fn scrape(&self, client: &Client) -> HashMap<Url, Job> {
+    pub async fn scrape2(&self, driver: &WebDriver) -> WebDriverResult<HashMap<Url, Job>> {
         let mut jobs = HashMap::new();
 
         let mut url = self.url.clone();
-        loop {
+        for i in 0.. {
             // Make an HTTP request to the current URL.
-            log::debug!("[{}] Scraping: {}", self.name, url);
-            let page_response = r!(jobs, client.get(url).send());
-            if !page_response.status().is_success() {
-                log::warn!(
-                    "[{}] HTTP {}: {:?}",
-                    self.name,
-                    page_response.status(),
-                    page_response.text(),
-                );
-                return jobs;
-            }
-            let page_html = r!(jobs, page_response.text());
+            log::debug!("[{}] Page {}: Going to {}", self.name, i, url);
+            driver.goto(url.as_str()).await?;
+            let page_html = driver.source().await?;
 
             // Extract a list of jobs and a URL to the next page from the HTML.
             let (new_jobs, new_url) = self.parse_page(&page_html);
-            log::debug!("[{}] Found {} jobs", self.name, new_jobs.len());
+            log::debug!("[{}] Page {}: Found {} jobs", self.name, i, new_jobs.len());
             jobs.extend(new_jobs);
             url = bq!(new_url);
 
             // TODO: Sleep between requests?
         }
 
-        jobs
+        Ok(jobs)
     }
 
     fn parse_page(&self, page_html: &str) -> (HashMap<Url, Job>, Option<Url>) {
         let mut jobs = HashMap::new();
 
         // Parse jobs from the HTML.
-        for job_html in self.next_job_re.split(&page_html).skip(1) {
+        let start = self
+            .start_re
+            .as_ref()
+            .and_then(|x| x.find(&page_html))
+            .map(|x| x.end())
+            .unwrap_or_default();
+        let end = self
+            .end_re
+            .as_ref()
+            .and_then(|x| x.find(&page_html[start..]))
+            .map(|x| start + x.start())
+            .unwrap_or(page_html.len());
+        for job_html in self.next_job_re.split(&page_html[start..end]).skip(1) {
             let captures = c!(self.job_title_re.captures(job_html));
             let raw_title = c!(captures.get(1)).as_str().trim();
             let raw_title = decode_html_entities(raw_title);

@@ -1,8 +1,13 @@
-use find_a_job::Bot;
+use find_a_job::{init_logger, Bot};
+use thirtyfour::error::WebDriverResult;
 
-fn main() {
+#[tokio::main]
+async fn main() -> WebDriverResult<()> {
+    init_logger(log::LevelFilter::Info);
     let mut bot = Bot::new();
-    bot.init();
-    bot.scrape();
+    bot.init().await?;
+    bot.load();
+    bot.update_jobs().await;
     bot.save();
+    bot.quit().await
 }

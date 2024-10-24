@@ -3,16 +3,18 @@ use std::fmt::Display;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// A job posting.
+/// A discovered job posting.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Job {
+    /// The name of the job board where this job was found.
     pub source: String,
     pub title: String,
     pub level: JobLevel,
     pub specialty: Option<JobSpecialty>,
     pub discipline: JobDiscipline,
     pub is_general_application: bool,
-    pub first_seen: DateTime<Utc>,
+    /// The time when this job was found.
+    pub timestamp: DateTime<Utc>,
 }
 
 impl Display for Job {
@@ -33,7 +35,7 @@ impl Job {
             specialty: parse_specialty(&norm),
             discipline: parse_discipline(&norm),
             is_general_application: parse_is_general_application(&norm),
-            first_seen: Utc::now(),
+            timestamp: Utc::now(),
         }
     }
 
@@ -63,11 +65,11 @@ impl Job {
             })
     }
 
-    pub(crate) fn log_level(&self) -> log::Level {
+    pub(crate) fn prefix(&self) -> &'static str {
         if self.is_good() {
-            log::Level::Info
+            "[!] "
         } else {
-            log::Level::Debug
+            ""
         }
     }
 }
@@ -160,7 +162,7 @@ fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
         AUTOMATION_RE,
         r"\b(automation|build|security|devops?|test(ing)?|site reliability|sre|platforms? engineer(ing)?)\b",
     );
-    re!(WEB_RE, r"\b(web|front ?end)\b");
+    re!(WEB_RE, r"\b(web|front.?end)\b");
     re!(
         GRAPHICS_RE,
         r"\b(graphics|rendering|art|technical artist)\b",
@@ -170,7 +172,7 @@ fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(AUDIO_RE, r"\b(audio)\b");
     re!(AI_RE, r"\b(ai|computer vision|machine learning)\b");
     re!(UI_RE, r"\b(ui|ux|user interface|user experience)\b");
-    re!(NETWORK_RE, r"\b(network|online|server|services?|backend)\b");
+    re!(NETWORK_RE, r"\b(network|server|services?|backend)\b");
     re!(ENGINE_RE, r"\b(engine programmer|tools|technology)\b");
     re!(GAMEPLAY_RE, r"\b(gameplay)\b");
 
