@@ -3,6 +3,7 @@ mod job;
 mod job_board;
 
 pub use bot::Bot;
+pub use job::{Job, JobDiscipline, JobLevel, JobSpecialty};
 
 pub fn init_logger(default_level: log::LevelFilter) {
     pretty_env_logger::formatted_timed_builder()

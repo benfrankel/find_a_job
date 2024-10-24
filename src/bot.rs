@@ -65,6 +65,15 @@ impl Bot {
         self.jobs = r!(ron::from_str(&jobs_str));
     }
 
+    // Re-parse jobs from their titles. Useful for when parsing logic changes.
+    pub fn fix_jobs(&mut self) {
+        for job in self.jobs.values_mut() {
+            let timestamp = job.timestamp;
+            *job = Job::new(&job.title).with_source(&job.source);
+            job.timestamp = timestamp;
+        }
+    }
+
     pub fn load_job_boards(&mut self) {
         let job_boards_str = r!(std::fs::read_to_string(Self::JOB_BOARDS_FILE_PATH));
         self.job_boards = r!(ron::from_str(&job_boards_str));

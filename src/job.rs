@@ -129,7 +129,7 @@ macro_rules! re {
 fn parse_level(norm: &str) -> JobLevel {
     re!(
         INTERN_RE,
-        r"\b(intern(ship)?|co ?op|(under)?graduate|thesis)\b",
+        r"\b(intern(ship)?|co ?op|(under)?grad(uate)?|thesis)\b",
     );
     re!(ENTRY_RE, r"\b(entry|associate|junior|jr)\b");
     re!(MID_RE, r"\b(mid|executive assistant)\b");
@@ -160,9 +160,9 @@ fn parse_level(norm: &str) -> JobLevel {
 fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(
         AUTOMATION_RE,
-        r"\b(automation|build|security|devops?|test(ing)?|site reliability|sre|platforms? engineer(ing)?)\b",
+        r"\b(automation|build|security|devops?|test(ing)?|sdet|site reliability|sre|(platforms?|data) engineer(ing)?)\b",
     );
-    re!(WEB_RE, r"\b(web|front.?end)\b");
+    re!(WEB_RE, r"\b(web|front ?end)\b");
     re!(
         GRAPHICS_RE,
         r"\b(graphics|rendering|art|technical artist)\b",
@@ -209,7 +209,10 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
         r"\b(manager|director|president|coordinator|producer)\b",
     );
     re!(TESTER_RE, r"\b(tester|qa|quality engineer(ing)?)\b");
-    re!(KNOWN_OTHER_RE, r"\b(bi engineer|support engineer)\b");
+    re!(
+        KNOWN_OTHER_RE,
+        r"\b((bi|support|privacy|facility) engineer(ing)?|representative)\b",
+    );
     re!(
         PROGRAMMER_RE,
         r"\b(programmer|coder|developer|engineer(ing)?|technical artist|swe|sre)\b",
