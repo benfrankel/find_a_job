@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display};
 use html_escape::decode_html_entities;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use thirtyfour::{error::WebDriverResult, WebDriver};
+use thirtyfour::{error::WebDriverResult, prelude::ElementQueryable as _, By, WebDriver};
 use tiny_bail::prelude::*;
 use url::Url;
 
@@ -14,16 +14,25 @@ use crate::job::Job;
 pub struct JobBoard {
     pub name: String,
     url: Url,
+    /// An optional CSS selector to wait for before parsing the HTML.
+    #[serde(default)]
+    wait_for: Option<String>,
+    /// An optional regex to ignore some initial HTML.
     #[serde(with = "serde_regex", default)]
     start_re: Option<Regex>,
+    /// An optional regex to ignore some final HTML.
     #[serde(with = "serde_regex", default)]
     end_re: Option<Regex>,
+    /// A regex to jump to the next job in the list.
     #[serde(with = "serde_regex")]
     next_job_re: Regex,
+    /// A regex to capture the nearest job title.
     #[serde(with = "serde_regex")]
     job_title_re: Regex,
+    /// A regex to capture the nearest job URL.
     #[serde(with = "serde_regex")]
     job_url_re: Regex,
+    /// An optional regex to capture the URL of the next page.
     #[serde(with = "serde_regex", default)]
     next_page_re: Option<Regex>,
 }
@@ -35,17 +44,23 @@ impl Display for JobBoard {
 }
 
 impl JobBoard {
-    pub async fn scrape2(&self, driver: &WebDriver) -> WebDriverResult<HashMap<Url, Job>> {
+    pub async fn scrape(&self, driver: &WebDriver) -> WebDriverResult<HashMap<Url, Job>> {
         let mut jobs = HashMap::new();
 
         let mut url = self.url.clone();
         for i in 0.. {
-            // Make an HTTP request to the current URL.
+            // Make an HTTP request to get the current page.
             log::debug!("[{}] Page {}: Going to {}", self.name, i, url);
             driver.goto(url.as_str()).await?;
+
+            // Wait for the page to be ready before reading its HTML.
+            if let Some(css) = &self.wait_for {
+                log::debug!("[{}] Page {}: Waiting for jobs...", self.name, i);
+                driver.query(By::Css(css)).first().await?;
+            }
             let page_html = driver.source().await?;
 
-            // Extract a list of jobs and a URL to the next page from the HTML.
+            // Extract a list of jobs and the URL to the next page from the HTML.
             let (new_jobs, new_url) = self.parse_page(&page_html);
             log::debug!("[{}] Page {}: Found {} jobs", self.name, i, new_jobs.len());
             jobs.extend(new_jobs);
@@ -57,6 +72,7 @@ impl JobBoard {
         Ok(jobs)
     }
 
+    // TODO: Return `Result`.
     fn parse_page(&self, page_html: &str) -> (HashMap<Url, Job>, Option<Url>) {
         let mut jobs = HashMap::new();
 

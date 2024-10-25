@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     process::{Child, Command, Stdio},
+    time::Duration,
 };
 
 use chrono::{Datelike, Utc};
@@ -30,11 +31,14 @@ impl Bot {
     pub async fn init(&mut self) -> WebDriverResult<()> {
         assert!(self.server.is_none() && self.driver.is_none());
 
+        // Spawn WebDriver server as a child process.
         let server = Command::new("geckodriver")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()?;
+        std::thread::sleep(Duration::from_millis(100));
 
+        // Connect to WebDriver server.
         let mut caps = DesiredCapabilities::firefox();
         caps.set_headless()?;
         let driver = WebDriver::new("http://localhost:4444", caps).await?;
@@ -76,7 +80,7 @@ impl Bot {
 
     pub fn load_job_boards(&mut self) {
         let job_boards_str = r!(std::fs::read_to_string(Self::JOB_BOARDS_FILE_PATH));
-        self.job_boards = r!(ron::from_str(&job_boards_str));
+        self.job_boards = ron::from_str(&job_boards_str).unwrap();
     }
 
     pub fn save_jobs(&self) {
@@ -113,7 +117,7 @@ impl Bot {
     pub async fn scrape_job_board(&self, idx: usize) -> WebDriverResult<HashMap<Url, Job>> {
         // Scrape job board.
         let job_board = &self.job_boards[idx];
-        let mut jobs = job_board.scrape2(self.driver.as_ref().unwrap()).await?;
+        let mut jobs = job_board.scrape(self.driver.as_ref().unwrap()).await?;
 
         // Fix timestamps of already-known jobs.
         for (url, job) in &mut jobs {
@@ -145,8 +149,8 @@ fn sorted(jobs: &HashMap<Url, Job>) -> impl IntoIterator<Item = (&Url, &Job)> {
         let job = &jobs[url];
         (
             job.is_good(),
+            job.timestamp.num_days_from_ce(),
             &job.source,
-            job.timestamp.timestamp(),
             &job.title,
         )
     });
