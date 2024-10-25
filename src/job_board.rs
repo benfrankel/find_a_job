@@ -39,6 +39,9 @@ pub struct JobBoard {
     /// A regex to capture the nearest job URL.
     #[serde(with = "serde_regex")]
     job_url_re: Regex,
+    /// An optional CSS selector to close a popup before going to the next page.
+    #[serde(default)]
+    close_popup: Option<String>,
     /// An optional CSS selector to navigate to the next page.
     #[serde(default)]
     next_page: Option<String>,
@@ -84,6 +87,13 @@ impl JobBoard {
 
             // Go to the next page.
             let next_page = bq!(self.next_page.as_ref());
+            if let Some(css) = &self.close_popup {
+                if let Ok(elem) = driver.query(By::Css(css)).nowait().first().await {
+                    if let Ok(true) = elem.is_clickable().await {
+                        elem.click().await?;
+                    }
+                }
+            }
             let next_page = bq!(driver.query(By::Css(next_page)).nowait().first().await);
             log::debug!("[{}] Page {}: Next page...", self.name, page);
             let old_url = driver.current_url().await?;
