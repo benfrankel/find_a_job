@@ -1,9 +1,13 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, time::Duration};
 
 use html_escape::decode_html_entities;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use thirtyfour::{error::WebDriverResult, prelude::ElementQueryable as _, By, WebDriver};
+use thirtyfour::{
+    error::{WebDriverError, WebDriverResult},
+    prelude::{ElementQueryable as _, ElementWaitable as _},
+    By, WebDriver,
+};
 use tiny_bail::prelude::*;
 use url::Url;
 
@@ -14,6 +18,9 @@ use crate::job::Job;
 pub struct JobBoard {
     pub name: String,
     url: Url,
+    /// An optional iframe index to parse within.
+    #[serde(default)]
+    iframe: Option<u16>,
     /// An optional CSS selector to wait for before parsing the HTML.
     #[serde(default)]
     wait_for: Option<String>,
@@ -32,9 +39,9 @@ pub struct JobBoard {
     /// A regex to capture the nearest job URL.
     #[serde(with = "serde_regex")]
     job_url_re: Regex,
-    /// An optional regex to capture the URL of the next page.
-    #[serde(with = "serde_regex", default)]
-    next_page_re: Option<Regex>,
+    /// An optional CSS selector to navigate to the next page.
+    #[serde(default)]
+    next_page: Option<String>,
 }
 
 impl Display for JobBoard {
@@ -48,35 +55,60 @@ impl JobBoard {
         let mut jobs = HashMap::new();
 
         let mut url = self.url.clone();
-        for i in 0.. {
-            // Make an HTTP request to get the current page.
-            log::debug!("[{}] Page {}: Going to {}", self.name, i, url);
+        for page in 0.. {
+            // Go to the next page.
+            log::debug!("[{}] Page {}: {}", self.name, page, url);
             driver.goto(url.as_str()).await?;
 
-            // Wait for the page to be ready before reading its HTML.
+            // Get the page HTML once it's ready.
             if let Some(css) = &self.wait_for {
-                log::debug!("[{}] Page {}: Waiting for jobs...", self.name, i);
+                log::debug!("[{}] Page {}: Waiting for {}", self.name, page, css);
                 driver.query(By::Css(css)).first().await?;
+            }
+            if let Some(iframe) = self.iframe {
+                driver.enter_default_frame().await?;
+                driver.enter_frame(iframe).await?;
             }
             let page_html = driver.source().await?;
 
-            // Extract a list of jobs and the URL to the next page from the HTML.
-            let (new_jobs, new_url) = self.parse_page(&page_html);
-            log::debug!("[{}] Page {}: Found {} jobs", self.name, i, new_jobs.len());
-            jobs.extend(new_jobs);
-            url = bq!(new_url);
+            // Parse jobs from page HTML.
+            let prev_num_jobs = jobs.len();
+            jobs.extend(self.parse_page(&page_html));
+            log::debug!(
+                "[{}] Page {}: Found {} jobs ({} total)",
+                self.name,
+                page,
+                jobs.len() - prev_num_jobs,
+                jobs.len(),
+            );
 
-            // TODO: Sleep between requests?
+            // Go to the next page.
+            let next_page = bq!(self.next_page.as_ref());
+            let next_page = bq!(driver.query(By::Css(next_page)).nowait().first().await);
+            log::debug!("[{}] Page {}: Next page...", self.name, page);
+            let old_url = driver.current_url().await?;
+            next_page.wait_until().clickable().await?;
+            next_page.click().await?;
+            for i in 0..80 {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                url = driver.current_url().await?;
+                if url != old_url {
+                    break;
+                }
+                if i == 79 {
+                    return Err(WebDriverError::Timeout("waiting for next page".to_string()));
+                }
+            }
         }
 
         Ok(jobs)
     }
 
     // TODO: Return `Result`.
-    fn parse_page(&self, page_html: &str) -> (HashMap<Url, Job>, Option<Url>) {
+    fn parse_page(&self, page_html: &str) -> HashMap<Url, Job> {
         let mut jobs = HashMap::new();
 
-        // Parse jobs from the HTML.
+        // Parse jobs from HTML.
         let start = self
             .start_re
             .as_ref()
@@ -102,15 +134,6 @@ impl JobBoard {
             jobs.insert(url, Job::new(raw_title).with_source(&self.name));
         }
 
-        // Find a URL to the next page if there is one.
-        let next_page_url = self.next_page_re.as_ref().and_then(|x| {
-            let captures = rq!(x.captures(page_html));
-            let raw_url = r!(captures.get(1)).as_str();
-            let raw_url = decode_html_entities(raw_url);
-            let url = r!(self.url.join(&raw_url));
-            Some(url)
-        });
-
-        (jobs, next_page_url)
+        jobs
     }
 }

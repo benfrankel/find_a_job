@@ -1,11 +1,14 @@
 use std::{
     collections::HashMap,
     process::{Child, Command, Stdio},
+    sync::Arc,
     time::Duration,
 };
 
 use chrono::{Datelike, Utc};
-use thirtyfour::prelude::*;
+use thirtyfour::{
+    common::config::WebDriverConfig, extensions::query::ElementPollerWithTimeout, prelude::*,
+};
 use tiny_bail::prelude::*;
 use url::Url;
 
@@ -29,6 +32,14 @@ impl Bot {
     }
 
     pub async fn init(&mut self) -> WebDriverResult<()> {
+        self.init_helper(true).await
+    }
+
+    pub async fn init_no_headless(&mut self) -> WebDriverResult<()> {
+        self.init_helper(false).await
+    }
+
+    async fn init_helper(&mut self, headless: bool) -> WebDriverResult<()> {
         assert!(self.server.is_none() && self.driver.is_none());
 
         // Spawn WebDriver server as a child process.
@@ -40,8 +51,16 @@ impl Bot {
 
         // Connect to WebDriver server.
         let mut caps = DesiredCapabilities::firefox();
-        caps.set_headless()?;
-        let driver = WebDriver::new("http://localhost:4444", caps).await?;
+        if headless {
+            caps.set_headless()?;
+        }
+        let config = WebDriverConfig::builder()
+            .poller(Arc::new(ElementPollerWithTimeout::new(
+                Duration::from_secs(8),
+                Duration::from_millis(100),
+            )))
+            .build()?;
+        let driver = WebDriver::new_with_config("http://localhost:4444", caps, config).await?;
 
         self.server = Some(server);
         self.driver = Some(driver);

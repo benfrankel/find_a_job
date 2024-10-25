@@ -160,7 +160,7 @@ fn parse_level(norm: &str) -> JobLevel {
 fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(
         AUTOMATION_RE,
-        r"\b(automation|build|security|devops?|test(ing)?|sdet|site reliability|sre|(platforms?|data) engineer(ing)?)\b",
+        r"\b(automation|build|release|security|devops?|test(ing)?|sdet|site reliability|sre|(platforms?|data|migration) engineer(ing)?)\b",
     );
     re!(WEB_RE, r"\b(web|front ?end)\b");
     re!(
