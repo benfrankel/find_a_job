@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use thirtyfour::{
     error::{WebDriverError, WebDriverResult},
     prelude::{ElementQueryable as _, ElementWaitable as _},
-    By, WebDriver,
+    By, WebDriver, WebElement,
 };
 use tiny_bail::prelude::*;
 use url::Url;
@@ -21,6 +21,9 @@ pub struct JobSource {
     /// An optional iframe index to parse within.
     #[serde(default)]
     iframe: Option<u16>,
+    /// A sequence of sub-DOMs to enter to get to the meat.
+    #[serde(default)]
+    sub_doms: Vec<SubDom>,
     /// An optional CSS selector to wait for before parsing the HTML.
     #[serde(default)]
     wait_for: Option<String>,
@@ -62,20 +65,23 @@ impl JobSource {
 
         let mut url = self.url.clone();
         for page in 0.. {
-            // Go to the next page.
+            // Load the next page.
             log::debug!("[{}] Page {}: {}", self.name, page, url);
             driver.goto(url.as_str()).await?;
-
-            // Get the page HTML once it's ready.
             if let Some(css) = &self.wait_for {
                 log::debug!("[{}] Page {}: Waiting for {}", self.name, page, css);
                 driver.query(By::Css(css)).first().await?;
             }
-            if let Some(iframe) = self.iframe {
+
+            // Find the root element.
+            let mut root = driver.query(By::Css("*")).nowait().first().await?;
+            if !self.sub_doms.is_empty() {
                 driver.enter_default_frame().await?;
-                driver.enter_frame(iframe).await?;
+                for sub_dom in &self.sub_doms {
+                    root = sub_dom.enter(&driver, &root).await?;
+                }
             }
-            let page_html = driver.source().await?;
+            let page_html = root.outer_html().await?;
 
             // Parse jobs from page HTML.
             let prev_num_jobs = jobs.len();
@@ -91,7 +97,7 @@ impl JobSource {
             // Go to the next page.
             let next_page = bq!(self.next_page.as_ref());
             if let Some(css) = &self.close_popup {
-                if let Ok(elem) = driver.query(By::Css(css)).nowait().first().await {
+                if let Ok(elem) = root.query(By::Css(css)).nowait().first().await {
                     if let Ok(true) = elem.is_clickable().await {
                         // This is `next_page.scroll_into_view()` but with instant scrolling.
                         driver.execute(r#"arguments[0].scrollIntoView({block: "center", inline: "center", behavior: "instant"});"#, vec![elem.to_json()?]).await?;
@@ -99,7 +105,7 @@ impl JobSource {
                     }
                 }
             }
-            let next_page = bq!(driver.query(By::Css(next_page)).nowait().first().await);
+            let next_page = bq!(root.query(By::Css(next_page)).nowait().first().await);
             log::debug!("[{}] Page {}: Next page...", self.name, page);
             let old_url = driver.current_url().await?;
             next_page.wait_until().clickable().await?;
@@ -174,5 +180,35 @@ impl JobSource {
         }
 
         jobs
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum SubDom {
+    Frame(String),
+    Shadow(String),
+}
+
+impl SubDom {
+    async fn enter(&self, driver: &WebDriver, root: &WebElement) -> WebDriverResult<WebElement> {
+        match self {
+            SubDom::Frame(css) => {
+                root.query(By::Css(css))
+                    .nowait()
+                    .first()
+                    .await?
+                    .enter_frame()
+                    .await?;
+                driver.query(By::Css("*")).nowait().first().await
+            }
+            SubDom::Shadow(css) => {
+                root.query(By::Css(css))
+                    .nowait()
+                    .first()
+                    .await?
+                    .get_shadow_root()
+                    .await
+            }
+        }
     }
 }
