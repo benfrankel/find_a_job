@@ -15,7 +15,7 @@ use crate::job::Job;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct JobBoard {
+pub struct JobSource {
     pub name: String,
     url: Url,
     /// An optional iframe index to parse within.
@@ -50,13 +50,13 @@ pub struct JobBoard {
     next_page: Option<String>,
 }
 
-impl Display for JobBoard {
+impl Display for JobSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", &self.name)
     }
 }
 
-impl JobBoard {
+impl JobSource {
     pub async fn scrape(&self, driver: &WebDriver) -> WebDriverResult<HashMap<Url, Job>> {
         let mut jobs = HashMap::new();
 

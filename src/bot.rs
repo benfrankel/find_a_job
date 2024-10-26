@@ -14,20 +14,20 @@ use thirtyfour::{
 use tiny_bail::prelude::*;
 use url::Url;
 
-use crate::{job::Job, job_board::JobBoard};
+use crate::{job::Job, job_source::JobSource};
 
 #[derive(Default)]
 pub struct Bot {
     server: Option<Child>,
     pub driver: Option<WebDriver>,
-    pub job_boards: Vec<JobBoard>,
+    pub job_sources: Vec<JobSource>,
     pub jobs: HashMap<Url, Job>,
 }
 
 impl Bot {
     const JOBS_FILE_PATH: &str = "data/jobs.ron";
     const JOBS_BACKUP_FILE_PATH: &str = "data/jobs.ron.backup";
-    const JOB_BOARDS_FILE_PATH: &str = "data/job_boards.ron";
+    const JOB_SOURCES_FILE_PATH: &str = "data/job_sources.ron";
 
     pub fn new() -> Self {
         Self::default()
@@ -79,7 +79,7 @@ impl Bot {
 
     pub fn load(&mut self) {
         self.load_jobs();
-        self.load_job_boards();
+        self.load_job_sources();
     }
 
     pub fn save(&mut self) {
@@ -102,9 +102,9 @@ impl Bot {
         }
     }
 
-    pub fn load_job_boards(&mut self) {
-        let job_boards_str = r!(std::fs::read_to_string(Self::JOB_BOARDS_FILE_PATH));
-        self.job_boards = ron::from_str(&job_boards_str).unwrap();
+    pub fn load_job_sources(&mut self) {
+        let job_sources_str = r!(std::fs::read_to_string(Self::JOB_SOURCES_FILE_PATH));
+        self.job_sources = ron::from_str(&job_sources_str).unwrap();
     }
 
     pub fn save_jobs(&self) {
@@ -151,16 +151,16 @@ impl Bot {
 
     pub async fn update_jobs(&mut self) {
         let mut jobs = HashMap::with_capacity(2 * self.jobs.len());
-        for i in 0..self.job_boards.len() {
-            jobs.extend(c!(self.scrape_job_board(i).await));
+        for i in 0..self.job_sources.len() {
+            jobs.extend(c!(self.scrape_job_source(i).await));
         }
         self.jobs = jobs;
     }
 
-    pub async fn scrape_job_board(&self, idx: usize) -> WebDriverResult<HashMap<Url, Job>> {
-        // Scrape job board.
-        let job_board = &self.job_boards[idx];
-        let mut jobs = job_board.scrape(self.driver.as_ref().unwrap()).await?;
+    pub async fn scrape_job_source(&self, idx: usize) -> WebDriverResult<HashMap<Url, Job>> {
+        // Scrape job source.
+        let job_source = &self.job_sources[idx];
+        let mut jobs = job_source.scrape(self.driver.as_ref().unwrap()).await?;
 
         // Fix timestamps of already-known jobs.
         for (url, job) in &mut jobs {
@@ -172,7 +172,7 @@ impl Bot {
 
         // Log removed jobs.
         for (url, job) in sorted(&self.jobs) {
-            cq!(job.source == job_board.name && !jobs.contains_key(url));
+            cq!(job.source == job_source.name && !jobs.contains_key(url));
             log::info!(
                 "{}[{}] Missing: {} ({})",
                 job.prefix(),

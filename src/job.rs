@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// The name of the job board where this job was found.
+    /// The name of the job source where this job was found.
     pub source: String,
     /// The name of the company offering this job.
     pub company: String,
@@ -224,21 +224,22 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     re!(TESTER_RE, r"\b(tester|qa|quality engineer(ing)?)\b");
     re!(
         KNOWN_OTHER_RE,
-        r"\b((bi|support|privacy|facility|it systems) engineer(ing)?|representative)\b",
+        r"\b((bi|support|privacy|facility) engineer(ing)?|it|information technology|hr|human resources?|representative)\b",
     );
     re!(
         PROGRAMMER_RE,
-        r"\b(programmer|coder|developer|engineer(ing)?|technical artist|swe|sre|generalist)\b",
+        r"\b(programmer|coder|developer|engineer(ing)?|technical artist|swe|sre)\b",
     );
     re!(
         OTHER_RE,
         r"\b(specialist|researcher|scientist|analyst|assistant|responder|publishing|marketing|support)\b",
     );
-    re!(ARTIST_RE, r"\b(artist|animator|modeler)\b");
+    re!(ARTIST_RE, r"\b(artist|animator|modeler|3d generalist)\b");
     re!(WRITER_RE, r"\b(writer)\b");
     re!(COMPOSER_RE, r"\b(composer)\b");
     re!(DESIGNER_RE, r"\b(designer|architect)\b");
-    re!(SNEAKY_MANAGER_RE, r"\b(lead|head)\b");
+    re!(HEAD_RE, r"\b(lead|head)\b");
+    re!(GENERALIST_RE, r"\b(generalist)\b");
 
     if MANAGER_RE.is_match(norm) {
         JobDiscipline::Manager
@@ -258,8 +259,10 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
         JobDiscipline::Composer
     } else if DESIGNER_RE.is_match(norm) {
         JobDiscipline::Designer
-    } else if SNEAKY_MANAGER_RE.is_match(norm) {
+    } else if HEAD_RE.is_match(norm) {
         JobDiscipline::Manager
+    } else if GENERALIST_RE.is_match(norm) {
+        JobDiscipline::Programmer
     } else {
         JobDiscipline::Other
     }
@@ -455,7 +458,7 @@ mod tests {
         (
             "AI/Gameplay Programmer (Mid / Senior Level)",
             JobLevel::Mid,
-            Some(JobSpecialty::Ai),
+            Some(JobSpecialty::Gameplay),
             JobDiscipline::Programmer,
         ),
         (

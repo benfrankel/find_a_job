@@ -1,6 +1,6 @@
 mod bot;
 mod job;
-mod job_board;
+mod job_source;
 
 pub use bot::Bot;
 pub use job::{Job, JobDiscipline, JobLevel, JobSpecialty};
