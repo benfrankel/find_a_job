@@ -59,24 +59,52 @@ impl Job {
     }
 
     // TODO: Load preferences from a config file.
-    pub fn is_good(&self) -> bool {
-        !self.is_empty()
-            && !self.is_general_application
-            && [JobLevel::Entry, JobLevel::Mid].contains(&self.level)
-            && self.discipline == JobDiscipline::Programmer
-            && self.specialty.as_ref().is_none_or(|x| {
-                [
-                    JobSpecialty::Gameplay,
-                    JobSpecialty::Graphics,
-                    JobSpecialty::Engine,
-                    JobSpecialty::Physics,
-                ]
-                .contains(x)
-            })
+    pub fn score(&self) -> i32 {
+        let mut score = 0;
+
+        if self.is_empty() {
+            score -= 1000;
+        }
+        if self.is_general_application {
+            score -= 10;
+        }
+        score += match self.level {
+            JobLevel::Intern => -1000,
+            JobLevel::Entry => 10,
+            JobLevel::Mid => 0,
+            JobLevel::Senior => -500,
+            JobLevel::Lead => -1000,
+        };
+        score += match self.discipline {
+            JobDiscipline::Programmer => 100,
+            JobDiscipline::Designer => -105,
+            JobDiscipline::Artist => -105,
+            JobDiscipline::Writer => -110,
+            JobDiscipline::Composer => -110,
+            JobDiscipline::Tester => -125,
+            JobDiscipline::Manager => -150,
+            JobDiscipline::Other => -110,
+        };
+        score += match self.specialty {
+            Some(JobSpecialty::Gameplay) => 100,
+            Some(JobSpecialty::Graphics) => -1,
+            Some(JobSpecialty::Engine) => -1,
+            Some(JobSpecialty::Physics) => -5,
+            Some(JobSpecialty::Animation) => -100,
+            Some(JobSpecialty::Ai) => -100,
+            Some(JobSpecialty::Audio) => -110,
+            Some(JobSpecialty::Ui) => -120,
+            Some(JobSpecialty::Network) => -150,
+            Some(JobSpecialty::Automation) => -150,
+            Some(JobSpecialty::Web) => -150,
+            None => 0,
+        };
+
+        score
     }
 
     pub(crate) fn prefix(&self) -> ColoredString {
-        if self.is_good() {
+        if self.score() > 0 {
             "[!] ".bold().green()
         } else {
             "".into()

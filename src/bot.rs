@@ -139,7 +139,7 @@ impl Bot {
                     "{:64}",
                     job.to_string().chars().take(64).collect::<String>(),
                 )
-                .color(if job.is_good() {
+                .color(if job.score() > 0 {
                     Color::Green
                 } else {
                     Color::Red
@@ -194,11 +194,16 @@ impl Bot {
 
 fn sorted(jobs: &HashMap<Url, Job>) -> impl IntoIterator<Item = (&Url, &Job)> {
     let mut urls = jobs.keys().collect::<Vec<_>>();
+    let today = Utc::now().num_days_from_ce();
     urls.sort_by_key(|&url| {
         let job = &jobs[url];
+        let age = today - job.timestamp.num_days_from_ce();
         (
-            job.is_good(),
-            job.timestamp.num_days_from_ce(),
+            job.score() > 0,
+            age == 0,
+            age < 7,
+            job.score(),
+            age,
             &job.company,
             &job.title,
         )
