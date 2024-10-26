@@ -90,6 +90,8 @@ impl JobBoard {
             if let Some(css) = &self.close_popup {
                 if let Ok(elem) = driver.query(By::Css(css)).nowait().first().await {
                     if let Ok(true) = elem.is_clickable().await {
+                        // This is `next_page.scroll_into_view()` but with instant scrolling.
+                        driver.execute(r#"arguments[0].scrollIntoView({block: "center", inline: "center", behavior: "instant"});"#, vec![elem.to_json()?]).await?;
                         elem.click().await?;
                     }
                 }
@@ -98,6 +100,8 @@ impl JobBoard {
             log::debug!("[{}] Page {}: Next page...", self.name, page);
             let old_url = driver.current_url().await?;
             next_page.wait_until().clickable().await?;
+            // This is `next_page.scroll_into_view()` but with instant scrolling.
+            driver.execute(r#"arguments[0].scrollIntoView({block: "center", inline: "center", behavior: "instant"});"#, vec![next_page.to_json()?]).await?;
             next_page.click().await?;
             for i in 0..80 {
                 tokio::time::sleep(Duration::from_millis(100)).await;

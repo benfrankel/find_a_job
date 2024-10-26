@@ -8,6 +8,7 @@ use std::{
 use chrono::{Datelike, Utc};
 use thirtyfour::{
     common::config::WebDriverConfig, extensions::query::ElementPollerWithTimeout, prelude::*,
+    AlertBehaviour,
 };
 use tiny_bail::prelude::*;
 use url::Url;
@@ -54,6 +55,7 @@ impl Bot {
         if headless {
             caps.set_headless()?;
         }
+        caps.set_unexpected_alert_behaviour(AlertBehaviour::Dismiss)?;
         let config = WebDriverConfig::builder()
             .poller(Arc::new(ElementPollerWithTimeout::new(
                 Duration::from_secs(8),
