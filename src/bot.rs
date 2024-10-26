@@ -164,7 +164,7 @@ impl Bot {
 
         // Fix timestamps of already-known jobs.
         for (url, job) in &mut jobs {
-            if let Some(old) = self.jobs.get(&url) {
+            if let Some(old) = self.jobs.get(url) {
                 job.timestamp = old.timestamp;
                 continue;
             }

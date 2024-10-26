@@ -71,7 +71,7 @@ impl Job {
                     JobSpecialty::Engine,
                     JobSpecialty::Physics,
                 ]
-                .contains(&x)
+                .contains(x)
             })
     }
 

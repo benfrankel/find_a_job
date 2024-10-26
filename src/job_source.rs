@@ -52,7 +52,7 @@ pub struct JobSource {
 
 impl Display for JobSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", &self.name)
+        write!(f, "{}", self.name)
     }
 }
 
@@ -130,7 +130,7 @@ impl JobSource {
         let start = self
             .start_re
             .as_ref()
-            .and_then(|x| x.find(&page_html))
+            .and_then(|x| x.find(page_html))
             .map(|x| x.end())
             .unwrap_or_default();
         let end = self
