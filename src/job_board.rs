@@ -33,10 +33,13 @@ pub struct JobBoard {
     /// A regex to jump to the next job in the list.
     #[serde(with = "serde_regex")]
     next_job_re: Regex,
-    /// A regex to capture the nearest job title.
+    /// An optional regex to capture the job company.
+    #[serde(with = "serde_regex", default)]
+    job_company_re: Option<Regex>,
+    /// A regex to capture the job title.
     #[serde(with = "serde_regex")]
     job_title_re: Regex,
-    /// A regex to capture the nearest job URL.
+    /// A regex to capture the job URL.
     #[serde(with = "serde_regex")]
     job_url_re: Regex,
     /// An optional CSS selector to close a popup before going to the next page.
@@ -119,10 +122,11 @@ impl JobBoard {
     }
 
     // TODO: Return `Result`.
+    /// Extracts a collection of jobs from HTML.
     fn parse_page(&self, page_html: &str) -> HashMap<Url, Job> {
         let mut jobs = HashMap::new();
 
-        // Parse jobs from HTML.
+        // Determine the slice of HTML that contains the list of jobs.
         let start = self
             .start_re
             .as_ref()
@@ -135,18 +139,38 @@ impl JobBoard {
             .and_then(|x| x.find(&page_html[start..]))
             .map(|x| start + x.start())
             .unwrap_or(page_html.len());
+
+        // Split the slice into individual jobs.
         for job_html in self.next_job_re.split(&page_html[start..end]).skip(1) {
+            // Extract the job's company.
+            let company = if let Some(job_company_re) = &self.job_company_re {
+                let captures = c!(job_company_re.captures(job_html));
+                let raw_company = c!(captures.get(1)).as_str();
+                let raw_company = decode_html_entities(raw_company);
+                raw_company.trim().to_string()
+            } else {
+                self.name.clone()
+            };
+
+            // Extract the job's title.
             let captures = c!(self.job_title_re.captures(job_html));
             let raw_title = c!(captures.get(1)).as_str();
             let raw_title = decode_html_entities(raw_title);
             let raw_title = raw_title.trim();
 
+            // Extract the job's URL.
             let captures = c!(self.job_url_re.captures(job_html));
             let raw_url = c!(captures.get(1)).as_str();
             let raw_url = decode_html_entities(raw_url);
             let url = c!(self.url.join(&raw_url));
 
-            jobs.insert(url, Job::new(raw_title).with_source(&self.name));
+            // Save the job by its URL.
+            jobs.insert(
+                url,
+                Job::new(raw_title)
+                    .with_source(&self.name)
+                    .with_company(company),
+            );
         }
 
         jobs

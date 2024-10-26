@@ -95,7 +95,9 @@ impl Bot {
     pub fn fix_jobs(&mut self) {
         for job in self.jobs.values_mut() {
             let timestamp = job.timestamp;
-            *job = Job::new(&job.title).with_source(&job.source);
+            *job = Job::new(&job.title)
+                .with_source(&job.source)
+                .with_company(&job.company);
             job.timestamp = timestamp;
         }
     }
@@ -132,7 +134,7 @@ impl Bot {
                 } else {
                     Color::Red
                 }),
-                format!("{:12}", job.source.chars().take(12).collect::<String>()),
+                format!("{:12}", job.company.chars().take(12).collect::<String>()),
                 format!(
                     "{:64}",
                     job.to_string().chars().take(64).collect::<String>(),
@@ -171,13 +173,19 @@ impl Bot {
         // Log removed jobs.
         for (url, job) in sorted(&self.jobs) {
             cq!(job.source == job_board.name && !jobs.contains_key(url));
-            log::info!("{}[{}] Missing: {} ({})", job.prefix(), job_board, job, url);
+            log::info!(
+                "{}[{}] Missing: {} ({})",
+                job.prefix(),
+                job.company,
+                job,
+                url,
+            );
         }
 
         // Log added jobs.
         for (url, job) in sorted(&jobs) {
             cq!(!self.jobs.contains_key(url));
-            log::info!("{}[{}] New: {} ({})", job.prefix(), job_board, job, url);
+            log::info!("{}[{}] New: {} ({})", job.prefix(), job.company, job, url);
         }
 
         Ok(jobs)
@@ -191,7 +199,7 @@ fn sorted(jobs: &HashMap<Url, Job>) -> impl IntoIterator<Item = (&Url, &Job)> {
         (
             job.is_good(),
             job.timestamp.num_days_from_ce(),
-            &job.source,
+            &job.company,
             &job.title,
         )
     });

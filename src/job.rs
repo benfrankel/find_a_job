@@ -6,9 +6,12 @@ use serde::{Deserialize, Serialize};
 
 /// A discovered job posting.
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Job {
     /// The name of the job board where this job was found.
     pub source: String,
+    /// The name of the company offering this job.
+    pub company: String,
     pub title: String,
     pub level: JobLevel,
     pub specialty: Option<JobSpecialty>,
@@ -31,6 +34,7 @@ impl Job {
 
         Self {
             source: String::new(),
+            company: String::new(),
             title,
             level: parse_level(&norm),
             specialty: parse_specialty(&norm),
@@ -42,6 +46,11 @@ impl Job {
 
     pub fn with_source(mut self, source: impl Into<String>) -> Self {
         self.source = source.into();
+        self
+    }
+
+    pub fn with_company(mut self, company: impl Into<String>) -> Self {
+        self.company = company.into();
         self
     }
 
@@ -136,7 +145,7 @@ fn parse_level(norm: &str) -> JobLevel {
     re!(MID_RE, r"\b(mid|executive assistant)\b");
     re!(
         SENIOR_RE,
-        r"\b(senior|sr|expert|advanced?|principal|staff)\b",
+        r"\b(senior|sn?r|expert|advanced?|principal|staff)\b",
     );
     re!(
         LEAD_RE,
@@ -219,7 +228,7 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     );
     re!(
         PROGRAMMER_RE,
-        r"\b(programmer|coder|developer|engineer(ing)?|technical artist|swe|sre)\b",
+        r"\b(programmer|coder|developer|engineer(ing)?|technical artist|swe|sre|generalist)\b",
     );
     re!(
         OTHER_RE,

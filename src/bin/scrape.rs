@@ -3,7 +3,7 @@ use thirtyfour::error::WebDriverResult;
 
 #[tokio::main]
 async fn main() -> WebDriverResult<()> {
-    init_logger(log::LevelFilter::Info);
+    init_logger(log::LevelFilter::Debug);
     let mut bot = Bot::new();
     bot.init().await?;
     bot.load();
