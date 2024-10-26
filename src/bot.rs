@@ -6,6 +6,7 @@ use std::{
 };
 
 use chrono::{Datelike, Utc};
+use colored::{Color, Colorize as _};
 use thirtyfour::{
     common::config::WebDriverConfig, extensions::query::ElementPollerWithTimeout, prelude::*,
     AlertBehaviour,
@@ -116,13 +117,32 @@ impl Bot {
     pub fn list_jobs(&self) {
         let today = Utc::now().num_days_from_ce();
         for (url, job) in sorted(&self.jobs) {
+            let age = today - job.timestamp.num_days_from_ce();
+            // Ugly code makes pretty colors.
             println!(
-                "Seen {} days ago: {}[{}] {} ({})",
-                today - job.timestamp.num_days_from_ce(),
-                job.prefix(),
-                job.source,
-                job,
-                url
+                "{} {} {} {}",
+                format!("{:>2} days ago", age.to_string().bold()).color(if age == 0 {
+                    Color::Cyan
+                } else if age < 7 {
+                    Color::TrueColor {
+                        r: 200,
+                        g: 150,
+                        b: 60,
+                    }
+                } else {
+                    Color::Red
+                }),
+                format!("{:12}", job.source.chars().take(12).collect::<String>()),
+                format!(
+                    "{:64}",
+                    job.to_string().chars().take(64).collect::<String>(),
+                )
+                .color(if job.is_good() {
+                    Color::Green
+                } else {
+                    Color::Red
+                }),
+                format!("({})", url).italic().black(),
             );
         }
     }

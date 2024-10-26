@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use chrono::{DateTime, Utc};
+use colored::{ColoredString, Colorize as _};
 use serde::{Deserialize, Serialize};
 
 /// A discovered job posting.
@@ -65,11 +66,11 @@ impl Job {
             })
     }
 
-    pub(crate) fn prefix(&self) -> &'static str {
+    pub(crate) fn prefix(&self) -> ColoredString {
         if self.is_good() {
-            "[!] "
+            "[!] ".bold().green()
         } else {
-            ""
+            "".into()
         }
     }
 }
@@ -170,11 +171,12 @@ fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(ANIMATION_RE, r"\b(animation)\b");
     re!(PHYSICS_RE, r"\b(physics)\b");
     re!(AUDIO_RE, r"\b(audio)\b");
-    re!(AI_RE, r"\b(ai|computer vision|machine learning)\b");
+    re!(AI_RE, r"\b(computer vision|machine learning)\b");
     re!(UI_RE, r"\b(ui|ux|user interface|user experience)\b");
     re!(NETWORK_RE, r"\b(network|server|services?|backend)\b");
     re!(ENGINE_RE, r"\b(engine programmer|tools|technology)\b");
     re!(GAMEPLAY_RE, r"\b(gameplay)\b");
+    re!(SOFT_AI_RE, r"\b(ai)\b");
 
     if AUTOMATION_RE.is_match(norm) {
         Some(JobSpecialty::Automation)
@@ -198,6 +200,8 @@ fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
         Some(JobSpecialty::Engine)
     } else if GAMEPLAY_RE.is_match(norm) {
         Some(JobSpecialty::Gameplay)
+    } else if SOFT_AI_RE.is_match(norm) {
+        Some(JobSpecialty::Ai)
     } else {
         None
     }
@@ -211,7 +215,7 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     re!(TESTER_RE, r"\b(tester|qa|quality engineer(ing)?)\b");
     re!(
         KNOWN_OTHER_RE,
-        r"\b((bi|support|privacy|facility) engineer(ing)?|representative)\b",
+        r"\b((bi|support|privacy|facility|it systems) engineer(ing)?|representative)\b",
     );
     re!(
         PROGRAMMER_RE,
