@@ -150,7 +150,7 @@ impl JobSource {
         for job_html in self.next_job_re.split(&page_html[start..end]).skip(1) {
             // Extract the job's company.
             let company = if let Some(job_company_re) = &self.job_company_re {
-                let captures = c!(job_company_re.captures(job_html));
+                let captures = cq!(job_company_re.captures(job_html));
                 let raw_company = c!(captures.get(1)).as_str();
                 let raw_company = decode_html_entities(raw_company);
                 raw_company.trim().to_string()
@@ -159,13 +159,13 @@ impl JobSource {
             };
 
             // Extract the job's title.
-            let captures = c!(self.job_title_re.captures(job_html));
+            let captures = cq!(self.job_title_re.captures(job_html));
             let raw_title = c!(captures.get(1)).as_str();
             let raw_title = decode_html_entities(raw_title);
             let raw_title = raw_title.trim();
 
             // Extract the job's URL.
-            let captures = c!(self.job_url_re.captures(job_html));
+            let captures = cq!(self.job_url_re.captures(job_html));
             let raw_url = c!(captures.get(1)).as_str();
             let raw_url = decode_html_entities(raw_url);
             let url = c!(self.url.join(&raw_url));
