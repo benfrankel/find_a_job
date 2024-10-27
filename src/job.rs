@@ -3,22 +3,30 @@ use std::fmt::Display;
 use chrono::{DateTime, Utc};
 use colored::{ColoredString, Colorize as _};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 /// A discovered job posting.
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// The name of the job source where this job was found.
-    pub source: String,
-    /// The name of the company offering this job.
-    pub company: String,
-    pub title: String,
-    pub level: JobLevel,
-    pub specialty: Option<JobSpecialty>,
-    pub discipline: JobDiscipline,
-    pub is_general_application: bool,
-    /// The time when this job was found.
+    /// The time when the job was first found.
     pub timestamp: DateTime<Utc>,
+    /// The name of the source where the job was found.
+    pub source: String,
+    /// The name of the company offering the job.
+    pub company: String,
+    /// The URL to the job page.
+    pub url: Url,
+    /// The job title.
+    pub title: String,
+    /// The job level (entry, mid, senior, etc.).
+    pub level: JobLevel,
+    /// The job specialty (graphics, audio, AI, etc.).
+    pub specialty: Option<JobSpecialty>,
+    /// The job discipline (programmer, artist, writer, etc.).
+    pub discipline: JobDiscipline,
+    /// True if the job is an application drop box, not a real opening.
+    pub is_general_application: bool,
 }
 
 impl Display for Job {
@@ -28,43 +36,40 @@ impl Display for Job {
 }
 
 impl Job {
-    pub fn new(title: impl Into<String>) -> Self {
+    pub fn new(
+        source: impl Into<String>,
+        company: impl Into<String>,
+        url: impl Into<Url>,
+        title: impl Into<String>,
+    ) -> Self {
         let title = title.into();
         let norm = normalized(&title);
 
         Self {
-            source: String::new(),
-            company: String::new(),
+            timestamp: Utc::now(),
+            source: source.into(),
+            company: company.into(),
+            url: url.into(),
             title,
             level: parse_level(&norm),
             specialty: parse_specialty(&norm),
             discipline: parse_discipline(&norm),
             is_general_application: parse_is_general_application(&norm),
-            timestamp: Utc::now(),
         }
     }
 
-    pub fn with_source(mut self, source: impl Into<String>) -> Self {
-        self.source = source.into();
-        self
-    }
-
-    pub fn with_company(mut self, company: impl Into<String>) -> Self {
-        self.company = company.into();
-        self
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.title.len() <= 5
+    pub fn reparse(&mut self) {
+        let norm = normalized(&self.title);
+        self.level = parse_level(&norm);
+        self.specialty = parse_specialty(&norm);
+        self.discipline = parse_discipline(&norm);
+        self.is_general_application = parse_is_general_application(&norm);
     }
 
     // TODO: Load preferences from a config file.
     pub fn score(&self) -> i32 {
         let mut score = 0;
 
-        if self.is_empty() {
-            score -= 1000;
-        }
         if self.is_general_application {
             score -= 10;
         }
@@ -310,37 +315,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn is_empty() {
-        for s in ["", " ", "-", "N/a", "None"] {
-            assert!(Job::new(s).is_empty(), "{}", s);
-        }
-    }
-
-    #[test]
     fn level() {
         for (title, level, _, _) in TEST_CASES {
-            assert_eq!(Job::new(title).level, level, "{}", title);
+            assert_eq!(parse_level(&normalized(title)), level, "{}", title);
         }
     }
 
     #[test]
     fn specialty() {
         for (title, _, specialty, _) in TEST_CASES {
-            assert_eq!(Job::new(title).specialty, specialty, "{}", title);
+            assert_eq!(parse_specialty(&normalized(title)), specialty, "{}", title);
         }
     }
 
     #[test]
     fn discipline() {
         for (title, _, _, discipline) in TEST_CASES {
-            assert_eq!(Job::new(title).discipline, discipline, "{}", title);
+            assert_eq!(
+                parse_discipline(&normalized(title)),
+                discipline,
+                "{}",
+                title
+            );
         }
     }
 
     #[test]
     fn is_general_application() {
         for s in ["Engineering Application Drop Box", "General Application"] {
-            assert!(Job::new(s).is_general_application, "{}", s);
+            assert!(parse_is_general_application(&normalized(s)), "{}", s);
         }
     }
 

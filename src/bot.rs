@@ -12,7 +12,6 @@ use thirtyfour::{
     AlertBehaviour,
 };
 use tiny_bail::prelude::*;
-use url::Url;
 
 use crate::{job::Job, job_source::JobSource};
 
@@ -21,7 +20,7 @@ pub struct Bot {
     server: Option<Child>,
     pub driver: Option<WebDriver>,
     pub job_sources: Vec<JobSource>,
-    pub jobs: HashMap<Url, Job>,
+    pub jobs: HashMap<String, Job>,
 }
 
 impl Bot {
@@ -91,14 +90,10 @@ impl Bot {
         self.jobs = r!(ron::from_str(&jobs_str));
     }
 
-    // Re-parse jobs from their titles. Useful for when parsing logic changes.
+    // Re-parse jobs from their titles. Useful when parsing logic changes.
     pub fn fix_jobs(&mut self) {
         for job in self.jobs.values_mut() {
-            let timestamp = job.timestamp;
-            *job = Job::new(&job.title)
-                .with_source(&job.source)
-                .with_company(&job.company);
-            job.timestamp = timestamp;
+            job.reparse();
         }
     }
 
@@ -118,7 +113,7 @@ impl Bot {
 
     pub fn list_jobs(&self) {
         let today = Utc::now().num_days_from_ce();
-        for (url, job) in sorted(&self.jobs) {
+        for (id, job) in sorted(&self.jobs) {
             let age = today - job.timestamp.num_days_from_ce();
             // Ugly code makes pretty colors.
             println!(
@@ -144,7 +139,7 @@ impl Bot {
                 } else {
                     Color::Red
                 }),
-                format!("({})", url).italic().black(),
+                format!("({})", id).italic().black(),
             );
         }
     }
@@ -157,46 +152,52 @@ impl Bot {
         self.jobs = jobs;
     }
 
-    pub async fn scrape_job_source(&self, idx: usize) -> WebDriverResult<HashMap<Url, Job>> {
+    pub async fn scrape_job_source(&self, idx: usize) -> WebDriverResult<HashMap<String, Job>> {
         // Scrape job source.
         let job_source = &self.job_sources[idx];
         let mut jobs = job_source.scrape(self.driver.as_ref().unwrap()).await?;
 
         // Fix timestamps of already-known jobs.
-        for (url, job) in &mut jobs {
-            if let Some(old) = self.jobs.get(url) {
+        for (id, job) in &mut jobs {
+            if let Some(old) = self.jobs.get(id) {
                 job.timestamp = old.timestamp;
                 continue;
             }
         }
 
         // Log removed jobs.
-        for (url, job) in sorted(&self.jobs) {
-            cq!(job.source == job_source.name && !jobs.contains_key(url));
+        for (id, job) in sorted(&self.jobs) {
+            cq!(job.source == job_source.name && !jobs.contains_key(id));
             log::info!(
                 "{}[{}] Missing: {} ({})",
                 job.prefix(),
                 job.company,
                 job,
-                url,
+                job.url,
             );
         }
 
         // Log added jobs.
-        for (url, job) in sorted(&jobs) {
-            cq!(!self.jobs.contains_key(url));
-            log::info!("{}[{}] New: {} ({})", job.prefix(), job.company, job, url);
+        for (id, job) in sorted(&jobs) {
+            cq!(!self.jobs.contains_key(id));
+            log::info!(
+                "{}[{}] New: {} ({})",
+                job.prefix(),
+                job.company,
+                job,
+                job.url,
+            );
         }
 
         Ok(jobs)
     }
 }
 
-fn sorted(jobs: &HashMap<Url, Job>) -> impl IntoIterator<Item = (&Url, &Job)> {
-    let mut urls = jobs.keys().collect::<Vec<_>>();
+fn sorted(jobs: &HashMap<String, Job>) -> impl IntoIterator<Item = (&String, &Job)> {
     let today = Utc::now().num_days_from_ce();
-    urls.sort_by_key(|&url| {
-        let job = &jobs[url];
+    let mut ids = jobs.keys().collect::<Vec<_>>();
+    ids.sort_by_key(|&id| {
+        let job = &jobs[id];
         let age = today - job.timestamp.num_days_from_ce();
         (
             job.score() > 0,
@@ -207,5 +208,5 @@ fn sorted(jobs: &HashMap<Url, Job>) -> impl IntoIterator<Item = (&Url, &Job)> {
             &job.title,
         )
     });
-    urls.into_iter().map(|url| (url, &jobs[url]))
+    ids.into_iter().map(|id| (id, &jobs[id]))
 }
