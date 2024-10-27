@@ -25,23 +25,23 @@ pub struct JobSource {
     #[serde(default)]
     wait_for: Option<String>,
     /// An optional regex to ignore some initial HTML.
-    #[serde(with = "serde_regex", default)]
+    #[serde(default, with = "serde_regex")]
     start_re: Option<Regex>,
     /// An optional regex to ignore some final HTML.
-    #[serde(with = "serde_regex", default)]
+    #[serde(default, with = "serde_regex")]
     end_re: Option<Regex>,
     /// A regex to jump to the next job in the list.
     #[serde(with = "serde_regex")]
     next_job_re: Regex,
     /// An optional regex to capture the job's company.
-    #[serde(with = "serde_regex", default)]
+    #[serde(default, with = "serde_regex")]
     job_company_re: Option<Regex>,
     /// An optional regex to capture a unique ID for the job.
-    #[serde(with = "serde_regex", default)]
+    #[serde(default, with = "serde_regex")]
     job_id_re: Option<Regex>,
-    /// A regex to capture the job's URL.
-    #[serde(with = "serde_regex")]
-    job_url_re: Regex,
+    /// An optional regex to capture the job's URL.
+    #[serde(default, with = "serde_regex")]
+    job_url_re: Option<Regex>,
     /// A regex to capture the job's title.
     #[serde(with = "serde_regex")]
     job_title_re: Regex,
@@ -153,7 +153,8 @@ impl JobSource {
                 let company = cq!(company_re.captures(job_html));
                 let company = c!(company.get(1)).as_str();
                 let company = decode_html_entities(company);
-                company.trim().to_string()
+                let company = company.trim().to_string();
+                company
             } else {
                 self.name.clone()
             };
@@ -165,17 +166,23 @@ impl JobSource {
             let title = title.trim();
 
             // Extract the job's URL.
-            let url = cq!(self.job_url_re.captures(job_html));
-            let url = c!(url.get(1)).as_str();
-            let url = decode_html_entities(url);
-            let url = c!(self.url.join(&url));
+            let url = if let Some(url_re) = &self.job_url_re {
+                let url = cq!(url_re.captures(job_html));
+                let url = c!(url.get(1)).as_str();
+                let url = decode_html_entities(url);
+                let url = c!(self.url.join(&url));
+                url
+            } else {
+                self.url.clone()
+            };
 
             // Extract the job's ID.
             let id = if let Some(id_re) = &self.job_id_re {
                 let id = cq!(id_re.captures(job_html));
                 let id = c!(id.get(1)).as_str();
                 let id = decode_html_entities(id);
-                id.trim().to_string()
+                let id = id.trim().to_string();
+                id
             } else {
                 url.to_string()
             };
