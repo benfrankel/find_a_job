@@ -163,9 +163,10 @@ fn normalized(s: impl AsRef<str>) -> String {
 }
 
 macro_rules! re {
-    ($name:ident, $str:expr $(,)?) => {
-        static $name: std::sync::LazyLock<regex::Regex> =
-            std::sync::LazyLock::new(|| regex::Regex::new($str).unwrap());
+    ($name:ident, $($e:expr),* $(,)?) => {
+        static $name: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(
+            || regex::Regex::new(concat!($($e),*)).unwrap(),
+        );
     };
 }
 
@@ -203,7 +204,8 @@ fn parse_level(norm: &str) -> JobLevel {
 fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(
         AUTOMATION_RE,
-        r"\b(automation|build|release|security|devops?|test(ing)?|sdet|reliability|sre|(platforms?|data|migration) engineer(ing)?)\b",
+        r"\b(automation|build|release|security|devops?|test(ing)?",
+        r"|sdet|reliability|sre|(platforms?|data|migration) engineer(ing)?)\b",
     );
     re!(WEB_RE, r"\b(web|front ?end)\b");
     re!(
@@ -257,7 +259,8 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     re!(TESTER_RE, r"\b(tester|qa|quality engineer(ing)?)\b");
     re!(
         KNOWN_OTHER_RE,
-        r"\b((bi|support|privacy|facility) engineer(ing)?|it|information technology|hr|human resources?|representative)\b",
+        r"\b((bi|support|privacy|facility|mechatronics|enterprise solution) engineer(ing)?",
+        r"|it|information technology|hr|human resources?|representative)\b",
     );
     re!(
         PROGRAMMER_RE,
@@ -265,7 +268,8 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     );
     re!(
         OTHER_RE,
-        r"\b(specialist|researcher|scientist|analyst|assistant|responder|publishing|marketing|support)\b",
+        r"\b(specialist|researcher|scientist|analyst|assistant|responder",
+        r"|publishing|marketing|support)\b",
     );
     re!(ARTIST_RE, r"\b(artist|animator|modeler|3d generalist)\b");
     re!(WRITER_RE, r"\b(writer)\b");
