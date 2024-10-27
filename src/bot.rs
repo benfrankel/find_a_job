@@ -113,7 +113,7 @@ impl Bot {
 
     pub fn list_jobs(&self) {
         let today = Utc::now().num_days_from_ce();
-        for (id, job) in sorted(&self.jobs) {
+        for (_, job) in sorted(&self.jobs) {
             let age = today - job.timestamp.num_days_from_ce();
             // Ugly code makes pretty colors.
             println!(
@@ -139,7 +139,7 @@ impl Bot {
                 } else {
                     Color::Red
                 }),
-                format!("({})", id).italic().black(),
+                format!("({})", job.url).italic().black(),
             );
         }
     }
