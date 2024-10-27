@@ -177,8 +177,11 @@ impl JobSource {
                 let id = decode_html_entities(id);
                 id.trim().to_string()
             } else {
-                self.url.to_string()
+                url.to_string()
             };
+            if jobs.contains_key(&id) {
+                log::warn!("Job found with duplicate ID: {}", id);
+            }
 
             // Save the job by its ID.
             jobs.insert(id, Job::new(&self.name, company, url, title));
