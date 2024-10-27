@@ -25,7 +25,7 @@ pub struct Bot {
 
 impl Bot {
     const JOBS_FILE_PATH: &str = "data/jobs.ron";
-    const JOBS_BACKUP_FILE_PATH: &str = "data/jobs.ron.backup";
+    const JOBS_BACKUP_FILE_PATH: &str = "data/jobs.backup.ron";
     const JOB_SOURCES_FILE_PATH: &str = "data/job_sources.ron";
 
     pub fn new() -> Self {
