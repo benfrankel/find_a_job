@@ -18,9 +18,6 @@ use crate::job::Job;
 pub struct JobSource {
     pub name: String,
     url: Url,
-    /// An optional iframe index to parse within.
-    #[serde(default)]
-    iframe: Option<u16>,
     /// A sequence of sub-DOMs to enter to get to the meat.
     #[serde(default)]
     sub_doms: Vec<SubDom>,

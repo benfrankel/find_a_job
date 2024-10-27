@@ -202,8 +202,7 @@ fn sorted(jobs: &HashMap<Url, Job>) -> impl IntoIterator<Item = (&Url, &Job)> {
             job.score() > 0,
             age == 0,
             age < 7,
-            job.score(),
-            age,
+            job.score() - age,
             &job.company,
             &job.title,
         )
