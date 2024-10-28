@@ -139,7 +139,7 @@ impl Bot {
                 } else {
                     Color::Red
                 }),
-                format!("({})", job.url).italic().black(),
+                format!("({})", job.url).italic().dimmed(),
             );
         }
     }
