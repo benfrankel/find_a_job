@@ -92,8 +92,8 @@ impl Job {
         };
         score += match self.specialty {
             Some(JobSpecialty::Gameplay) => 100,
-            Some(JobSpecialty::Graphics) => -1,
-            Some(JobSpecialty::Engine) => -1,
+            Some(JobSpecialty::Graphics) => 1,
+            Some(JobSpecialty::Engine) => 1,
             Some(JobSpecialty::Physics) => -5,
             Some(JobSpecialty::Animation) => -100,
             Some(JobSpecialty::Ai) => -100,
@@ -105,7 +105,7 @@ impl Job {
             None => 0,
         };
 
-        score
+        10 * score
     }
 
     pub(crate) fn prefix(&self) -> ColoredString {
@@ -219,7 +219,7 @@ fn parse_specialty(norm: &str) -> Option<JobSpecialty> {
     re!(UI_RE, r"\b(ui|ux|user interface|user experience)\b");
     re!(NETWORK_RE, r"\b(network|server|services?|backend)\b");
     re!(ENGINE_RE, r"\b(engine programmer|tools|technology)\b");
-    re!(GAMEPLAY_RE, r"\b(gameplay)\b");
+    re!(GAMEPLAY_RE, r"\b(gameplay|game|unity|unreal)\b");
     re!(SOFT_AI_RE, r"\b(ai)\b");
 
     if AUTOMATION_RE.is_match(norm) {
@@ -409,13 +409,13 @@ mod tests {
         (
             "Principal Game Software Engineer (Apex Legends)",
             JobLevel::Senior,
-            None,
+            Some(JobSpecialty::Gameplay),
             JobDiscipline::Programmer,
         ),
         (
             "Senior/Lead C++ Software Engineer (Generalist - Game Modes) - American Football",
             JobLevel::Senior,
-            None,
+            Some(JobSpecialty::Gameplay),
             JobDiscipline::Programmer,
         ),
         (
@@ -595,7 +595,7 @@ mod tests {
         (
             "Architect (Unreal Engine)",
             JobLevel::Lead,
-            None,
+            Some(JobSpecialty::Gameplay),
             JobDiscipline::Designer,
         ),
         (
@@ -828,7 +828,7 @@ mod tests {
         (
             "Game Programmer",
             JobLevel::Mid,
-            None,
+            Some(JobSpecialty::Gameplay),
             JobDiscipline::Programmer,
         ),
         (
@@ -864,7 +864,7 @@ mod tests {
         (
             "Game Development Software Engineer",
             JobLevel::Mid,
-            None,
+            Some(JobSpecialty::Gameplay),
             JobDiscipline::Programmer,
         ),
         (
