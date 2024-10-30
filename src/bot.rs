@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use chrono::{Datelike, Utc};
+use chrono::Utc;
 use colored::{Color, Colorize as _};
 use thirtyfour::{
     common::config::WebDriverConfig, extensions::query::ElementPollerWithTimeout, prelude::*,
@@ -112,9 +112,9 @@ impl Bot {
     }
 
     pub fn list_jobs(&self) {
-        let today = Utc::now().num_days_from_ce();
+        let now = Utc::now();
         for (_, job) in sorted(&self.jobs) {
-            let age = today - job.timestamp.num_days_from_ce();
+            let age = (now - job.timestamp).num_days();
             // Ugly code makes pretty colors.
             println!(
                 "{} {} {} {}",
@@ -194,11 +194,11 @@ impl Bot {
 }
 
 fn sorted(jobs: &HashMap<String, Job>) -> impl IntoIterator<Item = (&String, &Job)> {
-    let today = Utc::now().num_days_from_ce();
     let mut ids = jobs.keys().collect::<Vec<_>>();
+    let now = Utc::now();
     ids.sort_by_key(|&id| {
         let job = &jobs[id];
-        let age = today - job.timestamp.num_days_from_ce();
+        let age = (now - job.timestamp).num_days() as i32;
         (
             job.score() > 0,
             age == 0,
