@@ -71,41 +71,41 @@ impl Job {
         let mut score = 0;
 
         if self.is_general_application {
-            score -= 10;
+            score -= 30;
         }
         score += match self.level {
-            JobLevel::Intern => -1000,
-            JobLevel::Entry => 10,
+            JobLevel::Intern => -2000,
+            JobLevel::Entry => 5,
             JobLevel::Mid => 0,
-            JobLevel::Senior => -500,
-            JobLevel::Lead => -1000,
+            JobLevel::Senior => -1000,
+            JobLevel::Lead => -3000,
         };
         score += match self.discipline {
-            JobDiscipline::Programmer => 100,
-            JobDiscipline::Designer => -105,
-            JobDiscipline::Artist => -105,
-            JobDiscipline::Writer => -110,
-            JobDiscipline::Composer => -110,
-            JobDiscipline::Tester => -125,
-            JobDiscipline::Manager => -150,
-            JobDiscipline::Other => -110,
+            JobDiscipline::Programmer => 1,
+            JobDiscipline::Designer => -1000,
+            JobDiscipline::Artist => -1000,
+            JobDiscipline::Writer => -2000,
+            JobDiscipline::Composer => -2000,
+            JobDiscipline::Tester => -3000,
+            JobDiscipline::Manager => -5000,
+            JobDiscipline::Other => -2000,
         };
         score += match self.specialty {
-            Some(JobSpecialty::Gameplay) => 100,
+            Some(JobSpecialty::Gameplay) => 5,
             Some(JobSpecialty::Graphics) => 1,
             Some(JobSpecialty::Engine) => 1,
-            Some(JobSpecialty::Physics) => -5,
-            Some(JobSpecialty::Animation) => -100,
-            Some(JobSpecialty::Ai) => -100,
-            Some(JobSpecialty::Audio) => -110,
-            Some(JobSpecialty::Ui) => -120,
-            Some(JobSpecialty::Network) => -150,
-            Some(JobSpecialty::Automation) => -150,
-            Some(JobSpecialty::Web) => -150,
+            Some(JobSpecialty::Physics) => -2,
+            Some(JobSpecialty::Animation) => -5,
+            Some(JobSpecialty::Ai) => -5,
+            Some(JobSpecialty::Audio) => -10,
+            Some(JobSpecialty::Ui) => -15,
+            Some(JobSpecialty::Network) => -20,
+            Some(JobSpecialty::Automation) => -20,
+            Some(JobSpecialty::Web) => -20,
             None => 0,
         };
 
-        10 * score
+        score
     }
 
     pub(crate) fn prefix(&self) -> ColoredString {
