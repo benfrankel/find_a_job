@@ -166,12 +166,15 @@ impl Bot {
         }
 
         // Log removed jobs.
+        let now = Utc::now();
         for (id, job) in sorted(&self.jobs) {
             cq!(job.source == job_source.name && !jobs.contains_key(id));
+            let age = (now - job.timestamp).num_days();
             log::info!(
-                "{}[{}] Missing: {} ({})",
+                "{}[{}] Removed after {} days: {} ({})",
                 job.prefix(),
                 job.company,
+                age,
                 job,
                 job.url,
             );

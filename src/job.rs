@@ -259,7 +259,7 @@ fn parse_discipline(norm: &str) -> JobDiscipline {
     re!(TESTER_RE, r"\b(tester|qa|quality engineer(ing)?)\b");
     re!(
         KNOWN_OTHER_RE,
-        r"\b((bi|support|privacy|facility|mechatronics|enterprise solution) engineer(ing)?",
+        r"\b((bi|support|privacy|facility|mechatronics|festival tech|enterprise solution) engineer(ing)?",
         r"|it|information technology|hr|human resources?|representative)\b",
     );
     re!(
