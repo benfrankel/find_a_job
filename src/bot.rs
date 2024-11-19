@@ -184,7 +184,7 @@ impl Bot {
         for (id, job) in sorted(&jobs) {
             cq!(!self.jobs.contains_key(id));
             log::info!(
-                "{}[{}] New: {} ({})",
+                "{}[{}] Added: {} ({})",
                 job.prefix(),
                 job.company,
                 job,
