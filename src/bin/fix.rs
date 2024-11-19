@@ -11,7 +11,7 @@ async fn main() {
     bot.save_jobs();
 }
 
-/// A helper function for transitioning a job source off of using URLs as IDs.
+/// A helper function to transition a job source off of using URLs as IDs.
 #[allow(unused)]
 fn url_to_id<'a>(jobs: impl IntoIterator<Item = &'a mut Job>, source: impl AsRef<str>) {
     let jobs_by_url_str = std::fs::read_to_string("data/jobs.backup.ron").unwrap();
@@ -20,6 +20,7 @@ fn url_to_id<'a>(jobs: impl IntoIterator<Item = &'a mut Job>, source: impl AsRef
         if !job.source.starts_with(source.as_ref()) {
             continue;
         }
-        job.timestamp = jobs_by_url[job.url.as_str()].timestamp;
+        job.first_seen = jobs_by_url[job.url.as_str()].first_seen;
+        job.missing_since = jobs_by_url[job.url.as_str()].missing_since;
     }
 }

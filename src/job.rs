@@ -9,9 +9,11 @@ use url::Url;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// The time when the job was first found.
-    pub timestamp: DateTime<Utc>,
-    /// The name of the source where the job was found.
+    /// The first time the job was seen.
+    pub first_seen: DateTime<Utc>,
+    /// The start of the current period where the job has not been able to be found.
+    pub missing_since: Option<DateTime<Utc>>,
+    /// The name of the job source where the job was found.
     pub source: String,
     /// The name of the company offering the job.
     pub company: String,
@@ -46,7 +48,8 @@ impl Job {
         let norm = normalized(&title);
 
         Self {
-            timestamp: Utc::now(),
+            first_seen: Utc::now(),
+            missing_since: None,
             source: source.into(),
             company: company.into(),
             url: url.into(),

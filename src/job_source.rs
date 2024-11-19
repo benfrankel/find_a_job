@@ -182,7 +182,7 @@ impl JobSource {
                 let id = c!(id.get(1)).as_str();
                 let id = decode_html_entities(id);
                 let id = id.trim().to_string();
-                id
+                format!("{}/{}", self.name, id)
             } else {
                 url.to_string()
             };

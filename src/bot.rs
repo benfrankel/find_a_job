@@ -114,7 +114,8 @@ impl Bot {
     pub fn list_jobs(&self) {
         let now = Utc::now();
         for (_, job) in sorted(&self.jobs) {
-            let age = (now - job.timestamp).num_days();
+            cq!(job.missing_since.is_none());
+            let age = (now - job.first_seen).num_days();
             // Ugly code makes pretty colors.
             println!(
                 "{} {} {} {}",
@@ -145,54 +146,72 @@ impl Bot {
     }
 
     pub async fn update_jobs(&mut self) {
-        let mut jobs = HashMap::with_capacity(2 * self.jobs.len());
         for i in 0..self.job_sources.len() {
-            jobs.extend(c!(self.scrape_job_source(i).await));
+            cq!(self.update_job_source(i).await);
         }
-        self.jobs = jobs;
     }
 
-    pub async fn scrape_job_source(&self, idx: usize) -> WebDriverResult<HashMap<String, Job>> {
-        // Scrape job source.
+    pub async fn update_job_source(&mut self, idx: usize) -> WebDriverResult<()> {
+        let now = Utc::now();
         let job_source = &self.job_sources[idx];
         let mut jobs = job_source.scrape(self.driver.as_ref().unwrap()).await?;
 
-        // Fix timestamps of already-known jobs.
-        for (id, job) in &mut jobs {
+        // Set `missing_since` for old jobs that are now missing.
+        for (id, old) in &mut self.jobs {
+            cq!(old.source == job_source.name
+                && !jobs.contains_key(id)
+                && old.missing_since.is_none());
+
+            log::info!(
+                "{}[{}] Missing after {} days: {} ({})",
+                old.prefix(),
+                old.company,
+                (now - old.first_seen).num_days(),
+                old,
+                old.url,
+            );
+            old.missing_since = Some(now);
+        }
+
+        // Set `first_seen` for new jobs that have already been seen.
+        for (id, new) in &mut jobs {
             if let Some(old) = self.jobs.get(id) {
-                job.timestamp = old.timestamp;
-                continue;
+                new.first_seen = old.first_seen;
+                if let Some(missing_since) = old.missing_since {
+                    log::info!(
+                        "{}[{}] Recovered after {} days: {} ({})",
+                        old.prefix(),
+                        old.company,
+                        (now - missing_since).num_days(),
+                        old,
+                        old.url,
+                    );
+                }
+            } else {
+                log::info!(
+                    "{}[{}] New: {} ({})",
+                    new.prefix(),
+                    new.company,
+                    new,
+                    new.url,
+                );
             }
         }
 
-        // Log removed jobs.
-        let now = Utc::now();
-        for (id, job) in sorted(&self.jobs) {
-            cq!(job.source == job_source.name && !jobs.contains_key(id));
-            let age = (now - job.timestamp).num_days();
-            log::info!(
-                "{}[{}] Removed after {} days: {} ({})",
-                job.prefix(),
-                job.company,
-                age,
-                job,
-                job.url,
-            );
-        }
+        // Insert the new jobs.
+        self.jobs.extend(jobs);
 
-        // Log added jobs.
-        for (id, job) in sorted(&jobs) {
-            cq!(!self.jobs.contains_key(id));
-            log::info!(
-                "{}[{}] Added: {} ({})",
-                job.prefix(),
-                job.company,
-                job,
-                job.url,
-            );
-        }
+        // Remove the stale jobs (missing for over 3 days).
+        self.jobs.retain(|_, job| {
+            job.source != job_source.name
+                || job
+                    .missing_since
+                    .map(|t| (now - t).num_days())
+                    .unwrap_or_default()
+                    < 3
+        });
 
-        Ok(jobs)
+        Ok(())
     }
 }
 
@@ -201,7 +220,7 @@ fn sorted(jobs: &HashMap<String, Job>) -> impl IntoIterator<Item = (&String, &Jo
     let now = Utc::now();
     ids.sort_by_key(|&id| {
         let job = &jobs[id];
-        let age = (now - job.timestamp).num_days() as i32;
+        let age = (now - job.first_seen).num_days() as i32;
         (
             job.score() > 0,
             age == 0,
